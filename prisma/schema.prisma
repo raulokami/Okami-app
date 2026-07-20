@@ -1,0 +1,22 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Modelo minimo de la Fase 1, solo para verificar que la
+// conexion a la base de datos funciona end-to-end.
+// El modelo de datos real (Organization, User, Athlete, etc.)
+// se añade en fases posteriores segun OKAMI_APP_SPEC_v2.
+model HealthCheck {
+  id        String   @id @default(cuid())
+  checkedAt DateTime @default(now())
+}
