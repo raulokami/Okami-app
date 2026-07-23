@@ -1,15 +1,16 @@
 # Okami App
 
-Fase 1 — scaffold: Next.js 14 (App Router) + Prisma + Postgres, con el
-tema visual fijo de Okami (fondo `#1F1F1F`, acento `#C0392B`,
-Montserrat/Inter, mobile-first, dark theme). Sin auth, pagos ni lógica de
-negocio todavía.
+Fase 1 (scaffold) + Fase 2 (auth): Next.js 14 (App Router) + Prisma +
+Postgres + Clerk (login real, 3 roles: OWNER, COACH, ATLETA). Tema visual
+fijo de Okami (fondo `#1F1F1F`, acento `#C0392B`, Montserrat/Inter,
+mobile-first, dark theme). Sin pagos ni lógica de negocio todavía.
 
 ## Stack
 
 - Next.js 14 (App Router), TypeScript, Tailwind CSS
 - Prisma ORM 7 (driver adapter `@prisma/adapter-pg`)
 - Postgres (Railway en producción, local en desarrollo)
+- Clerk (auth + Organizations para multi-tenant por box)
 
 ## Desarrollo local
 
@@ -19,8 +20,10 @@ negocio todavía.
    npm install
    ```
 
-2. Copia `.env.example` a `.env` y apunta `DATABASE_URL` a un Postgres
-   local o a la instancia de Railway:
+2. Copia `.env.example` a `.env` y rellena:
+   - `DATABASE_URL`: Postgres local o de Railway.
+   - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY`: de tu app en
+     [dashboard.clerk.com](https://dashboard.clerk.com) → **API Keys**.
 
    ```bash
    cp .env.example .env
@@ -38,10 +41,49 @@ negocio todavía.
    npm run dev
    ```
 
-   Abre [http://localhost:3000](http://localhost:3000). La página muestra
-   un indicador de "Base de datos conectada" que hace una consulta real
-   contra Postgres en cada request (`GET /api/health` expone lo mismo como
-   JSON).
+   Abre [http://localhost:3000](http://localhost:3000).
+
+## Configuración de Clerk (Fase 2)
+
+1. **Organizations**: actívalo en el dashboard de tu app (menú
+   **Organizations** → *Enable organizations*). Cada Organization = un box.
+2. **Roles custom**: en **Organizations → Roles**, crea dos roles
+   adicionales con estos keys exactos (Clerk ya trae `org:admin` y
+   `org:member` por defecto):
+   - `org:owner`
+   - `org:coach`
+   - `org:athlete`
+
+   El mapeo a `enum Role` de Prisma está en `src/lib/roles.ts`. Si un
+   miembro tiene el rol por defecto `org:admin` (p.ej. quien crea la
+   organización desde `/onboarding`), se trata como `OWNER`; `org:member`
+   se trata como `ATHLETE`.
+3. **Invitar miembros con rol**: el OWNER puede invitar COACH/ATLETA desde
+   `/organization` (usa el componente `<OrganizationProfile />` de Clerk),
+   asignando el rol custom correspondiente en la invitación.
+4. **Webhook (opcional, recomendado en producción)**: una vez desplegada
+   la app, en **Webhooks** añade un endpoint a
+   `https://tu-dominio/api/webhooks/clerk`, suscrito a
+   `organization.created`, `organization.updated`, `organization.deleted`,
+   `organizationMembership.created`, `organizationMembership.updated`,
+   `organizationMembership.deleted`. Copia el *Signing Secret* a
+   `CLERK_WEBHOOK_SECRET`.
+
+   Sin el webhook, la sincronización Clerk → Prisma igual funciona vía
+   `src/lib/sync-user.ts`, que hace upsert de `Organization`/`User` en cada
+   request autenticado (`/dashboard`, `/organization`). El webhook es una
+   capa extra para mantener los datos al día aunque nadie entre a la app
+   (p.ej. si se borra una organización o membresía directamente en Clerk).
+
+## Flujo de auth
+
+- `/sign-in`, `/sign-up`: páginas de Clerk tematizadas.
+- `/onboarding`: para usuarios autenticados sin organización — crear un
+  box nuevo (OWNER) o aceptar una invitación pendiente (COACH/ATLETA).
+- `/dashboard`: protegido por `middleware.ts`, requiere sesión + org
+  activa. Muestra el rol real sincronizado desde Prisma.
+- `/organization`: solo OWNER (gate por rol vía `requireRole`), gestión de
+  miembros con `<OrganizationProfile />`.
 
 ## Deploy
 
@@ -54,8 +96,10 @@ negocio todavía.
 ### 2. App en Vercel
 
 1. Importa este repositorio en [Vercel](https://vercel.com/new).
-2. En **Settings → Environment Variables**, añade `DATABASE_URL` con el
-   valor de Railway (para los entornos Production y Preview).
+2. En **Settings → Environment Variables**, añade `DATABASE_URL`,
+   `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` y (tras
+   configurar el webhook) `CLERK_WEBHOOK_SECRET`, para Production y
+   Preview.
 3. Despliega. El script `build` corre `prisma migrate deploy` antes de
    `next build`, así que las migraciones se aplican automáticamente en
    cada deploy.
@@ -66,9 +110,19 @@ detecta Next.js automáticamente.
 ## Estructura
 
 ```
-prisma/schema.prisma   Modelo de datos (Fase 1: solo HealthCheck)
-src/lib/prisma.ts       Cliente Prisma singleton (driver adapter pg)
-src/app/layout.tsx      Layout base, tema dark fijo, fuentes Montserrat/Inter
-src/app/page.tsx        Home con verificación de conexión a la DB
-src/app/api/health/     Endpoint de health check
+prisma/schema.prisma         Modelo de datos (HealthCheck, Organization, User, Role)
+src/middleware.ts             Proteccion de rutas por sesion/organizacion (Clerk)
+src/lib/prisma.ts             Cliente Prisma singleton (driver adapter pg)
+src/lib/sync-user.ts          Sync Clerk -> Prisma en cada request autenticado
+src/lib/roles.ts              Mapeo rol de Clerk (org:*) -> enum Role de Prisma
+src/lib/require-role.ts       Helper de gating por rol para paginas server
+src/app/layout.tsx            Layout base, ClerkProvider tematizado, fuentes
+src/app/page.tsx              Home publica (estado DB + link a login/dashboard)
+src/app/sign-in/              Pagina de login (Clerk)
+src/app/sign-up/              Pagina de registro (Clerk)
+src/app/onboarding/           Crear/unirse a organizacion
+src/app/dashboard/             Dashboard protegido, muestra rol real
+src/app/organization/         Gestion de organizacion (solo OWNER)
+src/app/api/health/           Endpoint de health check
+src/app/api/webhooks/clerk/   Webhook de Clerk (sync de respaldo en produccion)
 ```

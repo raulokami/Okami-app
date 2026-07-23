@@ -14,9 +14,37 @@ datasource db {
 
 // Modelo minimo de la Fase 1, solo para verificar que la
 // conexion a la base de datos funciona end-to-end.
-// El modelo de datos real (Organization, User, Athlete, etc.)
-// se añade en fases posteriores segun OKAMI_APP_SPEC_v2.
 model HealthCheck {
   id        String   @id @default(cuid())
   checkedAt DateTime @default(now())
+}
+
+// Fase 2: auth con Clerk (Organizations + roles de membresia).
+// Los ids de Organization y User son los ids de Clerk (org_... / user_...),
+// no cuid — asi el sync Clerk -> Prisma es un upsert directo por id.
+// Los modelos de negocio (Athlete, Membership, Week, etc.) se añaden
+// en fases posteriores segun OKAMI_APP_SPEC_v2.
+model Organization {
+  id        String   @id
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users User[]
+}
+
+model User {
+  id             String   @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  role           Role
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+enum Role {
+  OWNER
+  COACH
+  ATHLETE
 }

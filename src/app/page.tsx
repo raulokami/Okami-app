@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +14,7 @@ async function getDbStatus() {
 }
 
 export default async function Home() {
-  const db = await getDbStatus();
+  const [db, { userId }] = await Promise.all([getDbStatus(), auth()]);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-8 px-6 py-16 text-center">
@@ -20,9 +22,16 @@ export default async function Home() {
         OKAMI
       </h1>
       <p className="max-w-sm text-sm text-neutral-400 sm:text-base">
-        Esqueleto de la plataforma. Fase 1: scaffold conectado a base de
-        datos.
+        Esqueleto de la plataforma. Fase 2: login real con Clerk (OWNER,
+        COACH, ATLETA).
       </p>
+
+      <Link
+        href={userId ? "/dashboard" : "/sign-in"}
+        className="rounded-lg bg-okami-accent px-6 py-3 text-sm font-semibold text-neutral-50 hover:bg-okami-accent/90 sm:text-base"
+      >
+        {userId ? "Ir al dashboard" : "Iniciar sesion"}
+      </Link>
 
       <div
         className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-sm sm:text-base ${
