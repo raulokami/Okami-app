@@ -2,8 +2,20 @@ import re
 
 
 def parse_okami_text(raw: str) -> dict:
-    """Parsea el texto con marcadores fijos OKAMI en una estructura de datos.
-    Misma lógica que el parser de React, para mantener coherencia exacta."""
+    """
+    Parser unificado OKAMI. Cubre todos los formatos de texto con marcadores:
+    - CLASE (SUBFORMATO: METCON / ENDURANCE)
+    - ATLETA
+    - HYBRID (usa TIPO_DIA para distinguir días Box/Run/etc.)
+    - RECOMPOSICION
+    - HYBRID INDIVIDUAL (mismo marcador que Atleta/Hybrid + TIPO_DIA)
+
+    Campos de salida:
+      formato, subformato, semana, intencion, dias_totales, dias, cierre
+      Cada día: numero, titulo, objetivo, tipo_dia, bloques, tip
+      Cada bloque: nombre, formato_wod, items, rx, int, scale
+      Cada item: texto, formato, buscamos
+    """
     lines = [l.strip() for l in raw.split('\n')]
     data = {
         'formato': '', 'semana': '', 'intencion': '', 'dias_totales': '',

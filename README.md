@@ -109,13 +109,12 @@ en la página.
 
 `pdf-service/` es un microservicio Python (FastAPI) independiente del
 Next.js — envuelve con una capa HTTP los parsers/generadores de PDF
-existentes (`parser.py` + `generar_pdf.py` para
-clase/atleta/hybrid/recomposición, `parser_individual.py` +
-`generar_pdf_individual.py` para sistema individual; sin reescribir su
+existentes (`parser.py` + `generar_pdf.py`, parser unificado para
+clase/atleta/hybrid/recomposición/hybrid individual, `parser_individual.py`
++ `generar_pdf_individual.py` para sistema individual; sin reescribir su
 lógica). Detalles de endpoints, auth y despliegue en
-[`pdf-service/README.md`](pdf-service/README.md). Falta añadir la
-variante hybrid individual y conectar el resultado (`pdfUrl`) desde
-`/generate`.
+[`pdf-service/README.md`](pdf-service/README.md). Falta conectar el
+resultado (`pdfUrl`) desde `/generate`.
 
 ## Deploy
 

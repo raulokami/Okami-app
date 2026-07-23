@@ -22,9 +22,11 @@ uvicorn main:app --reload --port 8000
 ## Endpoints
 
 - `GET /health` — health check.
-- `POST /pdf/general` — envuelve `generar_pdf()` (formatos
-  `CLASE_METCON`/`CLASE_ENDURANCE`/`ATLETA`/`HYBRID`/`RECOMPOSICION`, los
-  que trae el marcador `FORMATO:` del texto que parsea `parser.py`).
+- `POST /pdf/general` — envuelve `generar_pdf()`. `parser.py` es un
+  parser unificado: cubre `CLASE_METCON`/`CLASE_ENDURANCE`/`ATLETA`/
+  `HYBRID`/`RECOMPOSICION` **y también hybrid individual** (mismos
+  marcadores `FORMATO:`/`TIPO_DIA:` que distinguen días Box/Run/etc.) —
+  no hace falta un endpoint aparte para hybrid individual.
 - `POST /pdf/individual` — envuelve `generar_pdf_individual()` (formato
   `SISTEMA_INDIVIDUAL`).
 
@@ -47,7 +49,5 @@ falta o no coincide). Sin la variable definida, el servicio queda abierto
 
 ## Pendiente
 
-- `POST /pdf/hybrid-individual`, en cuanto se suban `parser_hybrid_individual.py`
-  y su `generar_pdf_hybrid_individual.py` correspondientes.
 - Conectar el resultado (`pdfUrl`) con `Week` desde el Next.js (fuera del
   alcance de esta capa HTTP).
