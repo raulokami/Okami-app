@@ -135,7 +135,14 @@ la del `pdf-service` si este la exige).
    de **PostgreSQL**.
 2. Copia la `DATABASE_URL` que Railway genera (pestaña *Connect*).
 
-### 2. App en Vercel
+### 2. pdf-service en Railway
+
+En el mismo proyecto de Railway (u otro aparte), despliega el
+microservicio Python desde este mismo repo con **Root Directory** =
+`pdf-service`. Pasos detallados, healthcheck y variables en
+[`pdf-service/README.md`](pdf-service/README.md#deploy-en-railway).
+
+### 3. App en Vercel
 
 1. Importa este repositorio en [Vercel](https://vercel.com/new).
 2. En **Settings → Environment Variables**, añade `DATABASE_URL`,

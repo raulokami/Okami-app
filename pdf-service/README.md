@@ -47,7 +47,30 @@ rutas de generación exigen el header `X-Api-Key` con ese valor (401 si
 falta o no coincide). Sin la variable definida, el servicio queda abierto
 — pensado solo para desarrollo local.
 
+## Deploy en Railway
+
+1. En [railway.app](https://railway.app), **New Project → Deploy from
+   GitHub repo** → selecciona `raulokami/Okami-app`.
+2. En el servicio creado, **Settings → Root Directory** → pon
+   `pdf-service`. Railway detecta el `Dockerfile` y `railway.json` de esa
+   carpeta automáticamente (build Docker, healthcheck en `/health`).
+3. **Settings → Networking → Generate Domain** para obtener una URL
+   pública tipo `https://<servicio>.up.railway.app`.
+4. (Opcional pero recomendado) **Variables** → añade `PDF_SERVICE_API_KEY`
+   con un valor aleatorio propio (p. ej. generado con
+   `openssl rand -hex 32`) para que el servicio no quede abierto a
+   cualquiera que tenga la URL.
+5. Espera al deploy (el build instala `wkhtmltopdf` vía `apt-get`, tarda
+   1-2 min) y confirma que `https://<servicio>.up.railway.app/health`
+   responde `{"status":"ok"}`.
+6. En el proyecto de Vercel del Next.js (`Settings → Environment
+   Variables`), añade:
+   - `PDF_SERVICE_URL` = la URL del paso 3 (sin barra final).
+   - `PDF_SERVICE_API_KEY` = el mismo valor del paso 4, si lo configuraste.
+
+   Redeploy del Next.js para que recoja las variables nuevas.
+
 ## Pendiente
 
-- Conectar el resultado (`pdfUrl`) con `Week` desde el Next.js (fuera del
-  alcance de esta capa HTTP).
+- Nada bloqueante — con el deploy en Railway y las env vars en Vercel, el
+  flujo `/weeks/[id]` → Generar PDF queda operativo de punta a punta.
