@@ -1,10 +1,12 @@
 # Okami App
 
-Fase 1 (scaffold) + Fase 2 (auth) + Fase 3 (CRUD Athletes/Weeks): Next.js
-14 (App Router) + Prisma + Postgres + Clerk (login real, 3 roles: OWNER,
-COACH, ATLETA). Tema visual fijo de Okami (fondo `#1F1F1F`, acento
-`#C0392B`, Montserrat/Inter, mobile-first, dark theme). Sin pagos ni
-generación de PDF real todavía (eso es la Fase 4+).
+Fase 1 (scaffold) + Fase 2 (auth) + Fase 3 (CRUD Athletes/Weeks) + Fase 4
+(microservicio Python de generación de PDF, en curso): Next.js 14 (App
+Router) + Prisma + Postgres + Clerk (login real, 3 roles: OWNER, COACH,
+ATLETA). Tema visual fijo de Okami (fondo `#1F1F1F`, acento `#C0392B`,
+Montserrat/Inter, mobile-first, dark theme). Todavía sin pagos ni
+conectar el microservicio de PDF al flujo de `/generate` (eso es el resto
+de la Fase 4).
 
 ## Stack
 
@@ -97,10 +99,23 @@ en la página.
   (`/athletes/[id]`) de atletas (nombre, formato).
 - `/generate`: pega el texto de una programación y la guarda como `Week`
   en estado `DRAFT` (atleta opcional — en blanco para una clase). La
-  generación real del PDF y el paso a `GENERATED` se conectan en la Fase
-  4 (microservicio Python); por ahora es solo persistencia.
+  llamada al microservicio de PDF (`pdf-service/`) y el paso a
+  `GENERATED` todavía no están conectados desde esta página; por ahora es
+  solo persistencia.
 - `/weeks`: histórico de semanas con filtro por formato/estado; cada una
   se puede editar o borrar desde `/weeks/[id]`.
+
+## Generación de PDF (Fase 4)
+
+`pdf-service/` es un microservicio Python (FastAPI) independiente del
+Next.js — envuelve con una capa HTTP los parsers/generadores de PDF
+existentes (`parser.py` + `generar_pdf.py` para
+clase/atleta/hybrid/recomposición, `parser_individual.py` +
+`generar_pdf_individual.py` para sistema individual; sin reescribir su
+lógica). Detalles de endpoints, auth y despliegue en
+[`pdf-service/README.md`](pdf-service/README.md). Falta añadir la
+variante hybrid individual y conectar el resultado (`pdfUrl`) desde
+`/generate`.
 
 ## Deploy
 
@@ -147,4 +162,5 @@ src/app/generate/             Crear semana (guardado real, sin PDF todavia)
 src/app/weeks/                Historico de semanas, editar/borrar
 src/app/api/health/           Endpoint de health check
 src/app/api/webhooks/clerk/   Webhook de Clerk (sync de respaldo en produccion)
+pdf-service/                  Microservicio Python (FastAPI) de generacion de PDF (Fase 4)
 ```

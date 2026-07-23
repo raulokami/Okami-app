@@ -37,3 +37,10 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# pdf-service (Python)
+pdf-service/__pycache__/
+pdf-service/*.pyc
+pdf-service/.venv
+pdf-service/*.pdf
+pdf-service/*.html
