@@ -84,8 +84,22 @@ model Week {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
+  pdf WeekPdf?
+
   @@index([organizationId])
   @@index([athleteId])
+}
+
+// Bytes del PDF generado, separados de Week para que la tabla caliente
+// no cargue con blobs. Un solo registro por Week (upsert al regenerar,
+// nunca se acumulan versiones) y se borra en cascada con la Week.
+model WeekPdf {
+  weekId    String   @id
+  week      Week     @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  data      Bytes
+  mimeType  String   @default("application/pdf")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum Format {

@@ -1,12 +1,10 @@
 # Okami App
 
 Fase 1 (scaffold) + Fase 2 (auth) + Fase 3 (CRUD Athletes/Weeks) + Fase 4
-(microservicio Python de generación de PDF, en curso): Next.js 14 (App
+(generación real de PDF vía microservicio Python): Next.js 14 (App
 Router) + Prisma + Postgres + Clerk (login real, 3 roles: OWNER, COACH,
 ATLETA). Tema visual fijo de Okami (fondo `#1F1F1F`, acento `#C0392B`,
-Montserrat/Inter, mobile-first, dark theme). Todavía sin pagos ni
-conectar el microservicio de PDF al flujo de `/generate` (eso es el resto
-de la Fase 4).
+Montserrat/Inter, mobile-first, dark theme). Todavía sin pagos (Fase 6).
 
 ## Stack
 
@@ -98,12 +96,10 @@ en la página.
 - `/athletes`: listado, alta (`/athletes/new`) y detalle/edición/borrado
   (`/athletes/[id]`) de atletas (nombre, formato).
 - `/generate`: pega el texto de una programación y la guarda como `Week`
-  en estado `DRAFT` (atleta opcional — en blanco para una clase). La
-  llamada al microservicio de PDF (`pdf-service/`) y el paso a
-  `GENERATED` todavía no están conectados desde esta página; por ahora es
-  solo persistencia.
+  en estado `DRAFT` (atleta opcional — en blanco para una clase).
 - `/weeks`: histórico de semanas con filtro por formato/estado; cada una
-  se puede editar o borrar desde `/weeks/[id]`.
+  se puede editar o borrar desde `/weeks/[id]`, donde también está el
+  botón **Generar PDF**.
 
 ## Generación de PDF (Fase 4)
 
@@ -113,8 +109,23 @@ existentes (`parser.py` + `generar_pdf.py`, parser unificado para
 clase/atleta/hybrid/recomposición/hybrid individual, `parser_individual.py`
 + `generar_pdf_individual.py` para sistema individual; sin reescribir su
 lógica). Detalles de endpoints, auth y despliegue en
-[`pdf-service/README.md`](pdf-service/README.md). Falta conectar el
-resultado (`pdfUrl`) desde `/generate`.
+[`pdf-service/README.md`](pdf-service/README.md).
+
+Desde `/weeks/[id]`, el botón **Generar PDF** llama a la server action
+`generatePdf` (`src/app/weeks/actions.ts`), que:
+
+1. Llama a `PDF_SERVICE_URL` (`/pdf/general` o `/pdf/individual` segun el
+   `Format` de la semana — mapeo en `src/lib/pdf-service.ts`).
+2. Guarda los bytes del PDF en `WeekPdf` (tabla separada de `Week`, un
+   solo registro por semana vía upsert — regenerar no acumula versiones,
+   y se borra en cascada si se borra la `Week`).
+3. Actualiza `Week.pdfUrl` a `/api/weeks/[id]/pdf` (ruta interna que sirve
+   los bytes desde Postgres, protegida por rol/organización) y pasa
+   `status` a `GENERATED`.
+
+Variables de entorno nuevas (`.env.example`): `PDF_SERVICE_URL` (URL base
+del microservicio) y `PDF_SERVICE_API_KEY` (opcional, debe coincidir con
+la del `pdf-service` si este la exige).
 
 ## Deploy
 
@@ -128,9 +139,10 @@ resultado (`pdfUrl`) desde `/generate`.
 
 1. Importa este repositorio en [Vercel](https://vercel.com/new).
 2. En **Settings → Environment Variables**, añade `DATABASE_URL`,
-   `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` y (tras
-   configurar el webhook) `CLERK_WEBHOOK_SECRET`, para Production y
-   Preview.
+   `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, (tras
+   configurar el webhook) `CLERK_WEBHOOK_SECRET`, y `PDF_SERVICE_URL` /
+   `PDF_SERVICE_API_KEY` (URL pública donde esté desplegado `pdf-service/`),
+   para Production y Preview.
 3. Despliega. El script `build` corre `prisma migrate deploy` antes de
    `next build`, así que las migraciones se aplican automáticamente en
    cada deploy.
@@ -141,14 +153,15 @@ detecta Next.js automáticamente.
 ## Estructura
 
 ```
-prisma/schema.prisma         Modelo de datos (HealthCheck, Organization, User, Athlete, Week, Role, Format, WeekStatus)
+prisma/schema.prisma         Modelo de datos (HealthCheck, Organization, User, Athlete, Week, WeekPdf, Role, Format, WeekStatus)
 src/middleware.ts             Proteccion de rutas por sesion/organizacion (Clerk)
 src/lib/prisma.ts             Cliente Prisma singleton (driver adapter pg)
 src/lib/sync-user.ts          Sync Clerk -> Prisma en cada request autenticado
 src/lib/roles.ts              Mapeo rol de Clerk (org:*) -> enum Role de Prisma
 src/lib/require-role.ts       Helper de gating por rol para paginas server
 src/lib/format-labels.ts       Labels ES para Format/WeekStatus
-src/components/               AppHeader, AthleteForm, WeekForm, DeleteButton
+src/lib/pdf-service.ts         Cliente HTTP del microservicio pdf-service (Fase 4)
+src/components/               AppHeader, AthleteForm, WeekForm, DeleteButton, GeneratePdfButton
 src/app/layout.tsx            Layout base, ClerkProvider tematizado, fuentes
 src/app/page.tsx              Home publica (estado DB + link a login/dashboard)
 src/app/sign-in/              Pagina de login (Clerk)
@@ -157,9 +170,10 @@ src/app/onboarding/           Crear/unirse a organizacion
 src/app/dashboard/             Dashboard protegido, contadores y accesos por rol
 src/app/organization/         Gestion de organizacion (solo OWNER)
 src/app/athletes/             CRUD de atletas (OWNER/COACH)
-src/app/generate/             Crear semana (guardado real, sin PDF todavia)
-src/app/weeks/                Historico de semanas, editar/borrar
+src/app/generate/             Crear semana (guardado real)
+src/app/weeks/                Historico de semanas, editar/borrar/generar PDF
 src/app/api/health/           Endpoint de health check
 src/app/api/webhooks/clerk/   Webhook de Clerk (sync de respaldo en produccion)
+src/app/api/weeks/[id]/pdf/   Sirve los bytes del PDF generado (WeekPdf)
 pdf-service/                  Microservicio Python (FastAPI) de generacion de PDF (Fase 4)
 ```

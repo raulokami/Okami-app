@@ -22,8 +22,8 @@ export default async function GeneratePage() {
         <div>
           <h1 className="font-heading text-2xl font-bold text-neutral-50">Generar semana</h1>
           <p className="mt-1 text-sm text-neutral-500">
-            Pega el texto de la programacion y guardalo como borrador. La
-            generacion real del PDF se conecta en la Fase 4.
+            Pega el texto de la programacion y guardalo como borrador. Desde
+            el detalle de la semana puedes generar el PDF real.
           </p>
         </div>
         <div className="max-w-xl">

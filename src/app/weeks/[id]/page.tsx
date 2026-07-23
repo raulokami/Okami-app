@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { DeleteButton } from "@/components/delete-button";
+import { GeneratePdfButton } from "@/components/generate-pdf-button";
 import { WeekForm } from "@/components/week-form";
 import { WEEK_STATUS_LABEL } from "@/lib/format-labels";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/require-role";
-import { deleteWeek, updateWeek } from "@/app/weeks/actions";
+import { deleteWeek, generatePdf, updateWeek } from "@/app/weeks/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,7 @@ export default async function WeekDetailPage({
 
   const updateWithId = updateWeek.bind(null, week.id);
   const deleteWithId = deleteWeek.bind(null, week.id);
+  const generatePdfWithId = generatePdf.bind(null, week.id);
 
   return (
     <>
@@ -43,16 +45,19 @@ export default async function WeekDetailPage({
           <span className="text-sm text-neutral-500">{WEEK_STATUS_LABEL[week.status]}</span>
         </div>
 
-        {week.pdfUrl && (
-          <a
-            href={week.pdfUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="w-fit text-sm text-okami-accent hover:underline"
-          >
-            Ver PDF
-          </a>
-        )}
+        <div className="flex items-center gap-4">
+          <GeneratePdfButton action={generatePdfWithId} />
+          {week.pdfUrl && (
+            <a
+              href={week.pdfUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm text-okami-accent hover:underline"
+            >
+              Ver PDF
+            </a>
+          )}
+        </div>
 
         <div className="max-w-xl">
           <WeekForm

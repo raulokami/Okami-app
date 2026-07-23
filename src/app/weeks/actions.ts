@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/require-role";
+import { generateWeekPdf } from "@/lib/pdf-service";
 import type { Format } from "@/generated/prisma/enums";
 
 const FORMAT_VALUES: Format[] = [
@@ -93,6 +94,34 @@ export async function updateWeek(weekId: string, formData: FormData) {
   revalidatePath("/weeks");
   revalidatePath(`/weeks/${weekId}`);
   if (athleteId) revalidatePath(`/athletes/${athleteId}`);
+}
+
+export async function generatePdf(weekId: string) {
+  const { organization } = await requireRole(["OWNER", "COACH"]);
+
+  const week = await prisma.week.findFirst({
+    where: { id: weekId, organizationId: organization.id },
+  });
+
+  if (!week) {
+    notFound();
+  }
+
+  const pdf = await generateWeekPdf(week.format, week.rawText, `${week.semana}.pdf`);
+
+  await prisma.weekPdf.upsert({
+    where: { weekId: week.id },
+    create: { weekId: week.id, data: pdf },
+    update: { data: pdf },
+  });
+
+  await prisma.week.update({
+    where: { id: week.id },
+    data: { pdfUrl: `/api/weeks/${week.id}/pdf`, status: "GENERATED" },
+  });
+
+  revalidatePath("/weeks");
+  revalidatePath(`/weeks/${week.id}`);
 }
 
 export async function deleteWeek(weekId: string) {
