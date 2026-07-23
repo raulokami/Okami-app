@@ -22,15 +22,17 @@ model HealthCheck {
 // Fase 2: auth con Clerk (Organizations + roles de membresia).
 // Los ids de Organization y User son los ids de Clerk (org_... / user_...),
 // no cuid — asi el sync Clerk -> Prisma es un upsert directo por id.
-// Los modelos de negocio (Athlete, Membership, Week, etc.) se añaden
-// en fases posteriores segun OKAMI_APP_SPEC_v2.
+// Los modelos de pagos (Membership) y progresion/vistas de atleta se
+// añaden en fases posteriores segun OKAMI_APP_SPEC_v2.
 model Organization {
   id        String   @id
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users User[]
+  users    User[]
+  athletes Athlete[]
+  weeks    Week[]
 }
 
 model User {
@@ -47,4 +49,57 @@ enum Role {
   OWNER
   COACH
   ATHLETE
+}
+
+// Fase 3: CRUD Athletes + Weeks, sin pagos (Membership llega en fase 6)
+// ni generacion de PDF real (el microservicio se conecta en fase 4 y
+// rellena Week.pdfUrl / pasa status a GENERATED).
+model Athlete {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  format         Format
+  jotformData    Json?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  weeks Week[]
+
+  @@index([organizationId])
+}
+
+model Week {
+  id             String       @id @default(cuid())
+  athleteId      String?
+  athlete        Athlete?     @relation(fields: [athleteId], references: [id], onDelete: SetNull)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  format         Format
+  subformato     String?
+  semana         String
+  rawText        String
+  pdfUrl         String?
+  status         WeekStatus   @default(DRAFT)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+  @@index([athleteId])
+}
+
+enum Format {
+  CLASE_METCON
+  CLASE_ENDURANCE
+  ATLETA
+  HYBRID
+  RECOMPOSICION
+  SISTEMA_INDIVIDUAL
+  HYROX_INDIVIDUAL
+}
+
+enum WeekStatus {
+  DRAFT
+  GENERATED
+  SENT
 }

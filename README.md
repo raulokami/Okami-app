@@ -1,9 +1,10 @@
 # Okami App
 
-Fase 1 (scaffold) + Fase 2 (auth): Next.js 14 (App Router) + Prisma +
-Postgres + Clerk (login real, 3 roles: OWNER, COACH, ATLETA). Tema visual
-fijo de Okami (fondo `#1F1F1F`, acento `#C0392B`, Montserrat/Inter,
-mobile-first, dark theme). Sin pagos ni lógica de negocio todavía.
+Fase 1 (scaffold) + Fase 2 (auth) + Fase 3 (CRUD Athletes/Weeks): Next.js
+14 (App Router) + Prisma + Postgres + Clerk (login real, 3 roles: OWNER,
+COACH, ATLETA). Tema visual fijo de Okami (fondo `#1F1F1F`, acento
+`#C0392B`, Montserrat/Inter, mobile-first, dark theme). Sin pagos ni
+generación de PDF real todavía (eso es la Fase 4+).
 
 ## Stack
 
@@ -85,6 +86,22 @@ mobile-first, dark theme). Sin pagos ni lógica de negocio todavía.
 - `/organization`: solo OWNER (gate por rol vía `requireRole`), gestión de
   miembros con `<OrganizationProfile />`.
 
+## CRUD de atletas y semanas (Fase 3)
+
+Todas las páginas están protegidas por rol (`OWNER`/`COACH`, vía
+`requireRole`) y escopeadas a la `Organization` del usuario — las server
+actions vuelven a validar rol y `organizationId` en cada mutación, no solo
+en la página.
+
+- `/athletes`: listado, alta (`/athletes/new`) y detalle/edición/borrado
+  (`/athletes/[id]`) de atletas (nombre, formato).
+- `/generate`: pega el texto de una programación y la guarda como `Week`
+  en estado `DRAFT` (atleta opcional — en blanco para una clase). La
+  generación real del PDF y el paso a `GENERATED` se conectan en la Fase
+  4 (microservicio Python); por ahora es solo persistencia.
+- `/weeks`: histórico de semanas con filtro por formato/estado; cada una
+  se puede editar o borrar desde `/weeks/[id]`.
+
 ## Deploy
 
 ### 1. Postgres en Railway
@@ -110,19 +127,24 @@ detecta Next.js automáticamente.
 ## Estructura
 
 ```
-prisma/schema.prisma         Modelo de datos (HealthCheck, Organization, User, Role)
+prisma/schema.prisma         Modelo de datos (HealthCheck, Organization, User, Athlete, Week, Role, Format, WeekStatus)
 src/middleware.ts             Proteccion de rutas por sesion/organizacion (Clerk)
 src/lib/prisma.ts             Cliente Prisma singleton (driver adapter pg)
 src/lib/sync-user.ts          Sync Clerk -> Prisma en cada request autenticado
 src/lib/roles.ts              Mapeo rol de Clerk (org:*) -> enum Role de Prisma
 src/lib/require-role.ts       Helper de gating por rol para paginas server
+src/lib/format-labels.ts       Labels ES para Format/WeekStatus
+src/components/               AppHeader, AthleteForm, WeekForm, DeleteButton
 src/app/layout.tsx            Layout base, ClerkProvider tematizado, fuentes
 src/app/page.tsx              Home publica (estado DB + link a login/dashboard)
 src/app/sign-in/              Pagina de login (Clerk)
 src/app/sign-up/              Pagina de registro (Clerk)
 src/app/onboarding/           Crear/unirse a organizacion
-src/app/dashboard/             Dashboard protegido, muestra rol real
+src/app/dashboard/             Dashboard protegido, contadores y accesos por rol
 src/app/organization/         Gestion de organizacion (solo OWNER)
+src/app/athletes/             CRUD de atletas (OWNER/COACH)
+src/app/generate/             Crear semana (guardado real, sin PDF todavia)
+src/app/weeks/                Historico de semanas, editar/borrar
 src/app/api/health/           Endpoint de health check
 src/app/api/webhooks/clerk/   Webhook de Clerk (sync de respaldo en produccion)
 ```
